@@ -1,4 +1,6 @@
 extends CharacterBody2D
+@onready var GhostScene := preload("res://ghost_player/ghost_player.tscn")
+@onready var camera_controller := get_parent().get_node("Camera")
 
 # --------------------
 # CONSTANTS
@@ -7,6 +9,7 @@ const SPEED := 300.0
 const JUMP_VELOCITY := -400.0
 const COYOTE_TIME := 0.12
 const JUMP_BUFFER_TIME := 0.12
+const DECELERATION := 1800.0
 
 const MAX_FRAMES := 300 # ~5 seconds at 60fps
 
@@ -18,6 +21,8 @@ var jump_buffer_timer := 0.0
 
 var state := PlayerState.new()
 var frame_history: Array[FrameRecord] = []
+var is_replaying := false
+var saved_player_position: Vector2
 
 # --------------------
 # INPUT ABSTRACTION
@@ -44,6 +49,7 @@ func get_input_state() -> InputState:
 # --------------------
 func simulate(input: InputState, delta: float) -> void:
 	# --- Coyote time update ---
+	$Sprite2D.flip_h =state.facing<0
 	if is_on_floor():
 		coyote_timer = COYOTE_TIME
 	else:
@@ -73,8 +79,7 @@ func simulate(input: InputState, delta: float) -> void:
 	if input.move_dir != 0:
 		velocity.x = input.move_dir * SPEED
 	else:
-		
-		velocity.x = move_toward(velocity.x, 0, SPEED * delta)
+		velocity.x = move_toward(velocity.x, 0, DECELERATION * delta)
 
 	move_and_slide()
 
@@ -85,7 +90,8 @@ func update_player_state() -> void:
 	state.position = global_position
 	state.velocity = velocity
 	state.is_on_floor = is_on_floor()
-	state.facing = sign(velocity.x)
+	if abs(velocity.x) > 1:
+		state.facing = sign(velocity.x)
 	state.is_jumping = velocity.y < 0
 
 # --------------------
@@ -99,12 +105,59 @@ func record_frame(input: InputState) -> void:
 
 	if frame_history.size() > MAX_FRAMES:
 		frame_history.pop_front()
+		
+#Recorder Frame
+func get_recorded_frames() -> Array[FrameRecord]:
+	return frame_history.duplicate(true)
+#===========
+#SPAWN_GHOST
+#===========
+func start_reverse_replay():
+	if frame_history.is_empty():
+		return
 
+	enter_replay_mode()
+
+	var ghost := GhostScene.instantiate()
+	get_parent().add_child(ghost)
+
+	camera_controller.target = ghost
+
+	ghost.global_position = frame_history[-1].state.position
+	ghost.start_reverse_playback(get_recorded_frames())
+
+	ghost.replay_finished.connect(func():
+		camera_controller.target = self
+		exit_replay_mode()
+	)
+#---------------------
+#GET REPLAY
+#---------------------
+func enter_replay_mode():
+	is_replaying = true
+	saved_player_position = global_position
+	visible = false
+	set_physics_process(false)
+
+func exit_replay_mode():
+	global_position = saved_player_position
+	visible = true
+	set_physics_process(true)
+	is_replaying = false
+#==========
+#READY MODE
+#==========
+func _ready() -> void:
+	camera_controller.target = self
 # --------------------
 # MAIN LOOP
 # --------------------
 func _physics_process(delta: float) -> void:
+	if is_replaying:
+		return
 	var input := get_input_state()
 	simulate(input, delta)
 	update_player_state()
 	record_frame(input)
+	if Input.is_action_just_pressed("spawn_ghost"):
+		start_reverse_replay()

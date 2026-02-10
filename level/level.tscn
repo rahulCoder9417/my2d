@@ -2,6 +2,7 @@
 
 [ext_resource type="Texture2D" uid="uid://bmp6nvic0o45k" path="res://icon.svg" id="1_7lnir"]
 [ext_resource type="PackedScene" uid="uid://kc84rnqii63h" path="res://player/player.tscn" id="2_5gx2l"]
+[ext_resource type="Script" uid="uid://c3lxh03ub4p34" path="res://level/camera.gd" id="3_qohg2"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_5gx2l"]
 size = Vector2(907, 205)
@@ -21,3 +22,9 @@ shape = SubResource("RectangleShape2D_5gx2l")
 
 [node name="Player" parent="." unique_id=43916418 instance=ExtResource("2_5gx2l")]
 position = Vector2(274, 55)
+
+[node name="Camera" type="Node2D" parent="." unique_id=948940223]
+script = ExtResource("3_qohg2")
+
+[node name="Camera2D" type="Camera2D" parent="Camera" unique_id=1621736139]
+zoom = Vector2(3, 3)

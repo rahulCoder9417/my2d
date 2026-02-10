@@ -1,0 +1,15 @@
+[gd_scene format=3 uid="uid://b4dgxwaaj54e"]
+
+[ext_resource type="Script" uid="uid://vr5ojawuboas" path="res://ghost_player/ghost_player.gd" id="1_d85es"]
+[ext_resource type="Texture2D" uid="uid://dwpc62brfsqi6" path="res://graphics/character/char_blue.png" id="2_l6bxl"]
+
+[node name="GhostPlayer" type="Node2D" unique_id=100301446]
+script = ExtResource("1_d85es")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=748049551]
+texture_filter = 1
+position = Vector2(-2, -1)
+scale = Vector2(1.833, 1.833)
+texture = ExtResource("2_l6bxl")
+hframes = 9
+vframes = 5
