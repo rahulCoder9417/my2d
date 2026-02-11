@@ -37,17 +37,23 @@ func wants_to_jump() -> bool:
 func released_jump() -> bool:
 	return Input.is_action_just_released("Jump")
 
+func wants_replay()->bool:
+	return Input.is_action_just_pressed("spawn_ghost")
 func get_input_state() -> InputState:
 	var input := InputState.new()
 	input.move_dir = get_move_direction()
 	input.jump_pressed = wants_to_jump()
 	input.jump_released = released_jump()
+	input.replay = wants_replay()
 	return input
 
 # --------------------
 # SIMULATION
 # --------------------
 func simulate(input: InputState, delta: float) -> void:
+	if(input.replay):
+		start_reverse_replay()
+		return
 	# --- Coyote time update ---
 	$Sprite2D.flip_h =state.facing<0
 	if is_on_floor():
@@ -159,5 +165,3 @@ func _physics_process(delta: float) -> void:
 	simulate(input, delta)
 	update_player_state()
 	record_frame(input)
-	if Input.is_action_just_pressed("spawn_ghost"):
-		start_reverse_replay()

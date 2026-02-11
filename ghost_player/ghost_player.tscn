@@ -1,15 +1,22 @@
 [gd_scene format=3 uid="uid://b4dgxwaaj54e"]
 
 [ext_resource type="Script" uid="uid://vr5ojawuboas" path="res://ghost_player/ghost_player.gd" id="1_d85es"]
-[ext_resource type="Texture2D" uid="uid://dwpc62brfsqi6" path="res://graphics/character/char_blue.png" id="2_l6bxl"]
+
+[sub_resource type="Animation" id="Animation_d85es"]
+resource_name = "left"
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_l6bxl"]
+_data = {
+&"left": SubResource("Animation_d85es")
+}
 
 [node name="GhostPlayer" type="Node2D" unique_id=100301446]
 script = ExtResource("1_d85es")
 
-[node name="Sprite2D" type="Sprite2D" parent="." unique_id=748049551]
+[node name="Sprite2D" type="AnimatedSprite2D" parent="." unique_id=1920667688]
 texture_filter = 1
 position = Vector2(-2, -1)
 scale = Vector2(1.833, 1.833)
-texture = ExtResource("2_l6bxl")
-hframes = 9
-vframes = 5
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=1112308253]
+libraries/ = SubResource("AnimationLibrary_l6bxl")
