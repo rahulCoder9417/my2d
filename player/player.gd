@@ -1,5 +1,5 @@
 extends CharacterBody2D
-@onready var GhostScene := preload("res://ghost_player/ghost_player.tscn")
+
 @onready var camera_controller := get_parent().get_node("Camera")
 
 # --------------------
@@ -11,24 +11,23 @@ const COYOTE_TIME := 0.12
 const JUMP_BUFFER_TIME := 0.12
 const DECELERATION := 1800.0
 
-const MAX_FRAMES := 300 # ~5 seconds at 60fps
+# --------------------
+# REWIND STORAGE
+# --------------------
+var frame_history: Array = []
+var health := 3
 
 # --------------------
 # STATE & TIMERS
 # --------------------
 var coyote_timer := 0.0
 var jump_buffer_timer := 0.0
-
-var state := PlayerState.new()
-var frame_history: Array[FrameRecord] = []
-var is_replaying := false
-var saved_player_position: Vector2
+var current_jump_type := "jump"
 
 # --------------------
-# INPUT ABSTRACTION
+# INPUT
 # --------------------
 func get_move_direction() -> int:
-	# -1 = left, 0 = idle, 1 = right
 	return int(Input.is_action_pressed("Right")) - int(Input.is_action_pressed("Left"))
 
 func wants_to_jump() -> bool:
@@ -37,25 +36,54 @@ func wants_to_jump() -> bool:
 func released_jump() -> bool:
 	return Input.is_action_just_released("Jump")
 
-func wants_replay()->bool:
-	return Input.is_action_just_pressed("spawn_ghost")
-func get_input_state() -> InputState:
-	var input := InputState.new()
-	input.move_dir = get_move_direction()
-	input.jump_pressed = wants_to_jump()
-	input.jump_released = released_jump()
-	input.replay = wants_replay()
-	return input
+# --------------------
+# SAVE FRAME (called by TimelineManager)
+# --------------------
+func save_frame():
+	var sprite := $AnimatedSprite2D
+	var state_data = {
+		"position": global_position,
+		"velocity": velocity,
+		"health": health,
+		"flip_h": sprite.flip_h,
+		"animation": sprite.animation,
+		"frame": sprite.frame,
+		"jump_type": current_jump_type
+	}
+
+	frame_history.append(state_data)
+
+	if frame_history.size() > TimelineManager.MAX_FRAMES:
+		frame_history.pop_front()
+
+# --------------------
+# REWIND STEP (called by TimelineManager)
+# --------------------
+func rewind_step():
+	if frame_history.is_empty():
+		return
+
+	var state_data = frame_history.pop_back()
+
+	global_position = state_data.position
+	velocity = state_data.velocity
+	health = state_data.health
+	current_jump_type = state_data.jump_type
+
+	var sprite := $AnimatedSprite2D
+	sprite.flip_h = state_data.flip_h
+
+	if sprite.animation != state_data.animation:
+		sprite.play(state_data.animation)
+
+	sprite.frame = state_data.frame
 
 # --------------------
 # SIMULATION
 # --------------------
-func simulate(input: InputState, delta: float) -> void:
-	if(input.replay):
-		start_reverse_replay()
-		return
-	# --- Coyote time update ---
-	$Sprite2D.flip_h =state.facing<0
+func simulate(delta: float) -> void:
+
+	# --- Coyote Time ---
 	if is_on_floor():
 		coyote_timer = COYOTE_TIME
 	else:
@@ -65,103 +93,81 @@ func simulate(input: InputState, delta: float) -> void:
 	if not is_on_floor():
 		velocity += get_gravity() * delta
 
-	# --- Jump buffer ---
-	if input.jump_pressed:
+	# --- Jump Buffer ---
+	if wants_to_jump():
 		jump_buffer_timer = JUMP_BUFFER_TIME
 	else:
 		jump_buffer_timer -= delta
 
-	# --- Jump execution ---
+	# --- Jump Execution ---
 	if jump_buffer_timer > 0 and coyote_timer > 0:
 		velocity.y = JUMP_VELOCITY
+		current_jump_type = "jump"
 		jump_buffer_timer = 0
 		coyote_timer = 0
 
-	# --- Variable jump height ---
-	if input.jump_released and velocity.y < 0:
+	# --- Short Jump Detection ---
+	if released_jump() and velocity.y < 0:
 		velocity.y *= 0.5
+		current_jump_type = "jump"
 
-	# --- Horizontal movement ---
-	if input.move_dir != 0:
-		velocity.x = input.move_dir * SPEED
+	# --- Horizontal Movement ---
+	var move_dir := get_move_direction()
+
+	if move_dir != 0:
+		velocity.x = move_dir * SPEED
 	else:
 		velocity.x = move_toward(velocity.x, 0, DECELERATION * delta)
 
 	move_and_slide()
 
 # --------------------
-# PLAYER STATE UPDATE
+# ANIMATION
 # --------------------
-func update_player_state() -> void:
-	state.position = global_position
-	state.velocity = velocity
-	state.is_on_floor = is_on_floor()
+func update_animation():
+	var sprite := $AnimatedSprite2D
+
+	# Flip
 	if abs(velocity.x) > 1:
-		state.facing = sign(velocity.x)
-	state.is_jumping = velocity.y < 0
+		sprite.flip_h = velocity.x < 0
+
+	# Air animations
+	if not is_on_floor():
+		if sprite.animation != current_jump_type:
+			sprite.play(current_jump_type)
+	else:
+		if abs(velocity.x) > 5:
+			if sprite.animation != "run":
+				sprite.play("run")
+		else:
+			if sprite.animation != "idle":
+				sprite.play("idle")
 
 # --------------------
-# FRAME RECORDING
+# READY
 # --------------------
-func record_frame(input: InputState) -> void:
-	var frame := FrameRecord.new()
-	frame.input = input
-	frame.state = state.copy() # IMPORTANT: deep copy
-	frame_history.append(frame)
-
-	if frame_history.size() > MAX_FRAMES:
-		frame_history.pop_front()
-		
-#Recorder Frame
-func get_recorded_frames() -> Array[FrameRecord]:
-	return frame_history.duplicate(true)
-#===========
-#SPAWN_GHOST
-#===========
-func start_reverse_replay():
-	if frame_history.is_empty():
-		return
-
-	enter_replay_mode()
-
-	var ghost := GhostScene.instantiate()
-	get_parent().add_child(ghost)
-
-	camera_controller.target = ghost
-
-	ghost.global_position = frame_history[-1].state.position
-	ghost.start_reverse_playback(get_recorded_frames())
-
-	ghost.replay_finished.connect(func():
-		camera_controller.target = self
-		exit_replay_mode()
-	)
-#---------------------
-#GET REPLAY
-#---------------------
-func enter_replay_mode():
-	is_replaying = true
-	saved_player_position = global_position
-	visible = false
-	set_physics_process(false)
-
-func exit_replay_mode():
-	global_position = saved_player_position
-	visible = true
-	set_physics_process(true)
-	is_replaying = false
-#==========
-#READY MODE
-#==========
 func _ready() -> void:
+	TimelineManager.rewindables.append(self)
 	camera_controller.target = self
+
+# --------------------
+# INPUT FOR REWIND
+# --------------------
+func _input(event):
+	if event.is_action_pressed("rewind"):
+		TimelineManager.start_rewind()
+
+	if event.is_action_released("rewind"):
+		TimelineManager.stop_rewind()
+
 # --------------------
 # MAIN LOOP
 # --------------------
-func _physics_process(delta: float) -> void:
-	if is_replaying:
+func _physics_process(delta):
+
+	# During rewind, simulation is blocked
+	if TimelineManager.is_rewinding:
 		return
-	var input := get_input_state()
-	simulate(input, delta)
-	update_player_state()
-	record_frame(input)
+
+	simulate(delta)
+	update_animation()

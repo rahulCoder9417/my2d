@@ -1,0 +1,21 @@
+[gd_scene format=3 uid="uid://kc84rnqii63h"]
+
+[ext_resource type="Texture2D" uid="uid://dwpc62brfsqi6" path="res://graphics/character/char_blue.png" id="1_oul6g"]
+[ext_resource type="Script" uid="uid://cjcq3djjjvcfk" path="res://player/player.gd" id="1_rkbax"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_kqu6x"]
+radius = 8.0
+
+[node name="Player" type="CharacterBody2D" unique_id=43916418]
+script = ExtResource("1_rkbax")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=620393018]
+shape = SubResource("CapsuleShape2D_kqu6x")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1985517811]
+texture_filter = 1
+position = Vector2(-2, -1)
+scale = Vector2(1.833, 1.833)
+texture = ExtResource("1_oul6g")
+hframes = 9
+vframes = 5

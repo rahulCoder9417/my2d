@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dwpc62brfsqi6"
-path="res://.godot/imported/char_blue.png-4e3db7497f7b2e0ef728fc7f8ee1f56c.ctex"
+uid="uid://de50tbqs1tksm"
+path="res://.godot/imported/crouch_attacks.png-e2d70d58c3c7647497d32fdda3d4831b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://graphics/character/char_blue.png"
-dest_files=["res://.godot/imported/char_blue.png-4e3db7497f7b2e0ef728fc7f8ee1f56c.ctex"]
+source_file="res://graphics/character/crouch_attacks.png"
+dest_files=["res://.godot/imported/crouch_attacks.png-e2d70d58c3c7647497d32fdda3d4831b.ctex"]
 
 [params]
 
