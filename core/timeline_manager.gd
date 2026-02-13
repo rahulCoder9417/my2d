@@ -24,7 +24,6 @@ func _physics_process(_delta):
 func start_rewind():
 	if is_rewinding:
 		return
-	
 	is_rewinding = true
 	rewind_frame_counter = 0
 
